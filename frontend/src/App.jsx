@@ -11,12 +11,13 @@ export default function App() {
 
   const router = useRoutes(routes);
 
-  const login = useCallback((userInfos, token) => {
+  const login = (userInfos, token) => {
     setToken(token);
     setIsLoggedIn(true);
     setUserInfos(userInfos);
     localStorage.setItem("user", JSON.stringify({ token }));
-  }, []);
+  };
+
 
   const logout = useCallback(() => {
     setToken(null);
