@@ -15,7 +15,7 @@ export default function CourseBox(props) {
 
 
   return (
-    <div class="col-4">
+    <div class="col-4" style={{width: `${props.isSlider && '100%'}`}}>
       <div class="course-box">
       <Link to={`/course-info/${props.shortName}`}>
           <img
