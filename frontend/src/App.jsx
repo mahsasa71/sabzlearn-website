@@ -16,6 +16,7 @@ export default function App() {
     setIsLoggedIn(true);
     setUserInfos(userInfos);
     localStorage.setItem("user", JSON.stringify({ token }));
+
   };
 
 
@@ -23,8 +24,9 @@ export default function App() {
     setToken(null);
     setUserInfos({});
     localStorage.removeItem("user");
+    setIsLoggedIn(false)
+    console.log("لاگ اوت شد")
   });
-
 
   useEffect(() => {
     const localStorageData = JSON.parse(localStorage.getItem("user"));
@@ -39,8 +41,12 @@ export default function App() {
           setIsLoggedIn(true);
           setUserInfos(userData);
         });
+    } else {
+      setIsLoggedIn(false)
+      
+      
     }
-  }, [login]);
+  }, [login,logout]);
 
   return (
     <AuthContext.Provider
@@ -49,7 +55,7 @@ export default function App() {
         token,
         userInfos,
         login,
-        logout: () => {},
+        logout
       }}
     >
       {router}

@@ -37,42 +37,41 @@ export default function CourseBox(props) {
             <div class="course-box__teacher">
               <i class="fas fa-chalkboard-teacher course-box__teacher-icon"></i>
               <a href="#" class="course-box__teacher-link">
-                رضا دولتی
+               {
+                props.creator
+               }
               </a>
             </div>
-            <div class="course-box__rating">
-              <img
-                src="/images/svgs/star.svg"
-                alt="rating"
-                class="course-box__star"
-              />
-              <img
-                src="/images/svgs/star_fill.svg"
-                alt="rating"
-                class="course-box__star"
-              />
-              <img
-                src="/images/svgs/star_fill.svg"
-                alt="rating"
-                class="course-box__star"
-              />
-              <img
-                src="/images/svgs/star_fill.svg"
-                alt="rating"
-                class="course-box__star"
-              />
-              <img
-                src="/images/svgs/star_fill.svg"
-                alt="rating"
-                class="course-box__star"
-              />
+
+            <div className="course-box__rating">
+              {
+                Array(5 - props.courseAverageScore).fill(0).map(item => (
+
+                  <img src="/images/svgs/star.svg" alt="score" className="course-box__star" />
+                ))
+              }
+
+
+
+              {
+                Array(props.courseAverageScore).fill(0).map(item => (
+
+                  <img src="/images/svgs/star_fill.svg" alt="score" className="course-box__star" />
+                ))
+              }
+
             </div>
+
+
+
           </div>
 
           <div class="course-box__status">
             <div class="course-box__users">
               <i class="fas fa-users course-box__users-icon"></i>
-              <span class="course-box__users-text">500</span>
+              <span class="course-box__users-text">
+                {props.registers}
+              </span>
             </div>
             <span class="course-box__price">
             {
@@ -91,6 +90,11 @@ export default function CourseBox(props) {
             <i className="fas fa-arrow-left course-box__footer-icon"></i>
           </Link>
         </div>
+
+
+        {( props.price !== 0 && props.discount) && (
+          <span class="courses-box__price-discount courses-box__discount">%{props.discount}</span>
+        )}
       </div>
     </div>
   )

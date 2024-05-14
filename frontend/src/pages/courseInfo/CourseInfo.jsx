@@ -7,45 +7,77 @@ import CourseDeatails from '../../components/courseDetails/CourseDeatails'
 import CommentTextArea from '../../components/commentTextAria/CommentTextAria'
 import Accordion from "react-bootstrap/Accordion";
 import './CourseInfo.css'
-import { useParams } from "react-router-dom";
-import swal from 'sweetalert'
+import { useParams, Link } from "react-router-dom"; import swal from 'sweetalert'
 
 export default function CourseInfo() {
-
   const [comments, setComments] = useState([]);
   const [sessions, setSessions] = useState([]);
   const [createdAt, setCreatedAt] = useState("");
   const [updatedAt, setUpdatedAt] = useState("");
   const [courseDetails, setCourseDetails] = useState({});
   const [courseTeacher, setCourseTeacher] = useState({})
+  const [courseCategory, setCourseCategory] = useState({})
+  const [relatedCourses, setRelatedCourses] = useState([]);
   const { courseName } = useParams()
   useEffect(() => {
     const localStorageData = JSON.parse(localStorage.getItem("user"));
 
     fetch(`http://localhost:4000/v1/courses/${courseName}`, {
-      
+
       headers: {
-        Authorization: `Bearer ${
-          localStorageData === null ? null : localStorageData.token
-        }`,
+        Authorization: `Bearer ${localStorageData === null ? null : localStorageData.token
+          }`,
       },
     })
- .then(res => res.json())
-    .then(courseInfo => {
-      setComments(courseInfo.comments);
-      setSessions(courseInfo.sessions);
-      setCourseDetails(courseInfo);
-      setCreatedAt(courseInfo.createdAt);
-      setUpdatedAt(courseInfo.updatedAt);
-      setCourseTeacher(courseInfo.creator)
-      console.log(courseInfo);
-    })
+      .then(res => res.json())
+      .then(courseInfo => {
+        setComments(courseInfo.comments);
+        setSessions(courseInfo.sessions);
+        setCourseDetails(courseInfo);
+        setCreatedAt(courseInfo.createdAt);
+        setUpdatedAt(courseInfo.updatedAt);
+        setCourseTeacher(courseInfo.creator)
+        setCourseCategory(courseInfo.categoryID)
+
+        // console.log(courseInfo);
+      })
+
+
+
+      fetch(`http://localhost:4000/v1/courses/related/${courseName}`)
+      .then((res) => res.json())
+      .then((allData) => {
+        console.log(allData);
+        setRelatedCourses(allData);
+      });
+
   }, [])
 
+  function getCourseDetails() {
+    const localStorageData = JSON.parse(localStorage.getItem("user"));
 
-  
+    fetch(`http://localhost:4000/v1/courses/${courseName}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${localStorageData === null ? null : localStorageData.token
+          }`,
+      },
+    })
+      .then((res) => res.json())
+      .then((courseInfo) => {
+        setComments(courseInfo.comments);
+        setSessions(courseInfo.sessions);
+        setCourseDetails(courseInfo);
+        setCreatedAt(courseInfo.createdAt);
+        setUpdatedAt(courseInfo.updatedAt);
+        setCourseTeacher(courseInfo.creator);
+        setCourseCategory(courseInfo.categoryID);
+      });
+  }
 
-  const submitComment = (newCommentBody,newScore) => {
+
+
+  const submitComment = (newCommentBody, commentScore) => {
     const localStorageData = JSON.parse(localStorage.getItem("user"));
 
     fetch(`http://localhost:4000/v1/comments`, {
@@ -57,8 +89,8 @@ export default function CourseInfo() {
       body: JSON.stringify({
         body: newCommentBody,
         courseShortName: courseName,
-        score:newScore
-        
+        score: commentScore
+
       }),
     })
       .then((res) => res.json())
@@ -72,7 +104,137 @@ export default function CourseInfo() {
   };
 
 
-  
+  const registerInCourse = (course) => {
+    if (course.price === 0) {
+      swal({
+        title: "آیا از ثبت نام در دوره اطمینان دارید؟",
+        icon: "warning",
+        buttons: ["نه", "آره"],
+      }).then((result) => {
+        if (result) {
+          fetch(`http://localhost:4000/v1/courses/${course._id}/register`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${JSON.parse(localStorage.getItem("user")).token
+                }`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              price: course.price,
+            }),
+          }).then((res) => {
+            console.log(res);
+            if (res.ok) {
+              swal({
+                title: "ثبت نام با موفقیت انجام شد",
+                icon: "success",
+                buttons: "اوکی",
+              }).then(() => {
+                getCourseDetails();
+              });
+            }
+          });
+        }
+      });
+    } else {
+      swal({
+        title: "آیا از ثبت نام در دوره اطمینان دارید؟",
+        icon: "warning",
+        buttons: ["نه", "آره"],
+      }).then((result) => {
+        if (result) {
+          swal({
+            title: "در صورت داشتن کد تخفیف وارد کنید:",
+            content: "input",
+            buttons: ["ثبت نام بدون کد تخفیف", "اعمال کد تخفیف"],
+          }).then((code) => {
+            if (code === null) {
+              fetch(`http://localhost:4000/v1/courses/${course._id}/register`, {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${JSON.parse(localStorage.getItem("user")).token
+                    }`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  price: course.price,
+                }),
+              }).then((res) => {
+                console.log(res);
+                if (res.ok) {
+                  swal({
+                    title: "ثبت نام با موفقیت انجام شد",
+                    icon: "success",
+                    buttons: "اوکی",
+                  }).then(() => {
+                    getCourseDetails();
+                  });
+                }
+              });
+            } else {
+              fetch(`http://localhost:4000/v1/offs/${code}`, {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${JSON.parse(localStorage.getItem("user")).token
+                    }`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  course: course._id,
+                }),
+              })
+                .then((res) => {
+                  console.log(res);
+
+                  if (res.status == 404) {
+                    swal({
+                      title: "کد تخفیف معتبر نیست",
+                      icon: "error",
+                      buttons: "ای بابا",
+                    });
+                  } else if (res.status == 409) {
+                    swal({
+                      title: "کد تخفیف قبلا استفاده شده :/",
+                      icon: "error",
+                      buttons: "ای بابا",
+                    });
+                  } else {
+                    return res.json();
+                  }
+                })
+                .then((code) => {
+                  fetch(
+                    `http://localhost:4000/v1/courses/${course._id}/register`,
+                    {
+                      method: "POST",
+                      headers: {
+                        Authorization: `Bearer ${JSON.parse(localStorage.getItem("user")).token
+                          }`,
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({
+                        price: course.price - (course.price * code.percent / 100)
+                      }),
+                    }
+                  ).then((res) => {
+                    console.log(res);
+                    if (res.ok) {
+                      swal({
+                        title: "ثبت نام با موفقیت انجام شد",
+                        icon: "success",
+                        buttons: "اوکی",
+                      }).then(() => {
+                        getCourseDetails();
+                      });
+                    }
+                  });
+                });
+            }
+          });
+        }
+      });
+    }
+  };
   return (
     <>
       <Topbar />
@@ -99,12 +261,14 @@ export default function CourseInfo() {
           <div class="row">
             <div class="col-6">
               <a href="#" class="course-info__link">
-                آموزش برنامه نویسی فرانت اند
+                {
+                  courseCategory.title
+                }
               </a>
               <h1 class="course-info__title">
-              {courseDetails.name}              </h1>
+                {courseDetails.name}              </h1>
               <p class="course-info__text">
-              {courseDetails.description}
+                {courseDetails.description}
               </p>
               <div class="course-info__social-media">
                 <a href="#" class="course-info__social-media-item">
@@ -157,7 +321,7 @@ export default function CourseInfo() {
                       title="آخرین بروزرسانی:"
                       text={updatedAt.slice(0, 10)}
                     />
-                  
+
                   </div>
                 </div>
                 {/* Start Course Progress */}
@@ -266,24 +430,52 @@ export default function CourseInfo() {
                       <Accordion.Item eventKey="0" className="accordion">
                         <Accordion.Header>معرفی دوره</Accordion.Header>
                         {sessions.map((session, index) => (
-                          <Accordion.Body className="introduction__accordion-body">
-                            <div className="introduction__accordion-right">
-                              <span className="introduction__accordion-count">
-                                {index + 1}
-                              </span>
-                              <i className="fab fa-youtube introduction__accordion-icon"></i>
-                              <a
-                                href="#"
-                                className="introduction__accordion-link"
-                              >
-                               {session.title}
-                              </a>
-                            </div>
-                            <div className="introduction__accordion-left">
-                              <span className="introduction__accordion-time">
-                                {session.time}
-                              </span>
-                            </div>
+                          <Accordion.Body
+                            key={session._id}
+                            className="introduction__accordion-body"
+                          >
+                            {session.free === 1 ||
+                              courseDetails.isUserRegisteredToThisCourse ? (
+                              <>
+                                <div className="introduction__accordion-right">
+                                  <span className="introduction__accordion-count">
+                                    {index + 1}
+                                  </span>
+                                  <i className="fab fa-youtube introduction__accordion-icon"></i>
+                                  <Link
+                                    to={`/${courseName}/${session._id}`}
+                                    className="introduction__accordion-link"
+                                  >
+                                    {session.title}
+                                  </Link>
+                                </div>
+                                <div className="introduction__accordion-left">
+                                  <span className="introduction__accordion-time">
+                                    {session.time}
+                                  </span>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div className="introduction__accordion-right">
+                                  <span className="introduction__accordion-count">
+                                    {index + 1}
+                                  </span>
+                                  <i className="fab fa-youtube introduction__accordion-icon"></i>
+                                  <span
+                                    className="introduction__accordion-link"
+                                  >
+                                    {session.title}
+                                  </span>
+                                </div>
+                                <div className="introduction__accordion-left">
+                                  <span className="introduction__accordion-time">
+                                    {session.time}
+                                  </span>
+                                  <i className="fa fa-lock"></i>
+                                </div>
+                              </>
+                            )}
                           </Accordion.Body>
                         ))}
                       </Accordion.Item>
@@ -292,52 +484,52 @@ export default function CourseInfo() {
                           اصطلاحات مقدماتی مربوط به بک‌اند
                         </Accordion.Header>
                         <Accordion.Body className="introduction__accordion-body">
-                            <div class="introduction__accordion-right">
-                              <span class="introduction__accordion-count">
-                                1
-                              </span>
-                              <i class="fab fa-youtube introduction__accordion-icon"></i>
-                              <a href="#" class="introduction__accordion-link">
-                                معرفی دوره + چرا یادگیری کتابخانه ها ضروری است؟
-                              </a>
-                            </div>
-                            <div class="introduction__accordion-left">
-                              <span class="introduction__accordion-time">
-                                18:34
-                              </span>
-                            </div>
+                          <div class="introduction__accordion-right">
+                            <span class="introduction__accordion-count">
+                              1
+                            </span>
+                            <i class="fab fa-youtube introduction__accordion-icon"></i>
+                            <a href="#" class="introduction__accordion-link">
+                              معرفی دوره + چرا یادگیری کتابخانه ها ضروری است؟
+                            </a>
+                          </div>
+                          <div class="introduction__accordion-left">
+                            <span class="introduction__accordion-time">
+                              18:34
+                            </span>
+                          </div>
                         </Accordion.Body>
                         <Accordion.Body className="introduction__accordion-body">
-                            <div class="introduction__accordion-right">
-                              <span class="introduction__accordion-count">
-                                1
-                              </span>
-                              <i class="fab fa-youtube introduction__accordion-icon"></i>
-                              <a href="#" class="introduction__accordion-link">
-                                جلسه دوم این فصل
-                              </a>
-                            </div>
-                            <div class="introduction__accordion-left">
-                              <span class="introduction__accordion-time">
-                                18:34
-                              </span>
-                            </div>
+                          <div class="introduction__accordion-right">
+                            <span class="introduction__accordion-count">
+                              1
+                            </span>
+                            <i class="fab fa-youtube introduction__accordion-icon"></i>
+                            <a href="#" class="introduction__accordion-link">
+                              جلسه دوم این فصل
+                            </a>
+                          </div>
+                          <div class="introduction__accordion-left">
+                            <span class="introduction__accordion-time">
+                              18:34
+                            </span>
+                          </div>
                         </Accordion.Body>
                         <Accordion.Body className="introduction__accordion-body">
-                            <div class="introduction__accordion-right">
-                              <span class="introduction__accordion-count">
-                                1
-                              </span>
-                              <i class="fab fa-youtube introduction__accordion-icon"></i>
-                              <a href="#" class="introduction__accordion-link">
-                                جلسه سوم این فصل
-                              </a>
-                            </div>
-                            <div class="introduction__accordion-left">
-                              <span class="introduction__accordion-time">
-                                18:34
-                              </span>
-                            </div>
+                          <div class="introduction__accordion-right">
+                            <span class="introduction__accordion-count">
+                              1
+                            </span>
+                            <i class="fab fa-youtube introduction__accordion-icon"></i>
+                            <a href="#" class="introduction__accordion-link">
+                              جلسه سوم این فصل
+                            </a>
+                          </div>
+                          <div class="introduction__accordion-left">
+                            <span class="introduction__accordion-time">
+                              18:34
+                            </span>
+                          </div>
                         </Accordion.Body>
                       </Accordion.Item>
                     </Accordion>
@@ -359,7 +551,7 @@ export default function CourseInfo() {
                       />
                       <div class="techer-details__header-titles">
                         <a href="#" class="techer-details__header-link">
-                        {
+                          {
                             courseTeacher.name
                           }
                         </a>
@@ -383,7 +575,7 @@ export default function CourseInfo() {
 
                 {/* Finish Teacher Details */}
 
-               <CommentTextArea comments={comments} submitComment={submitComment} />
+                <CommentTextArea comments={comments} submitComment={submitComment} />
               </div>
             </div>
 
@@ -391,13 +583,16 @@ export default function CourseInfo() {
               <div class="courses-info">
                 <div class="course-info">
                   <div class="course-info__register">
-                  {courseDetails.isUserRegisteredToThisCourse === true ? (
+                    {courseDetails.isUserRegisteredToThisCourse === true ? (
                       <span className="course-info__register-title">
                         <i className="fas fa-graduation-cap course-info__register-icon"></i>
                         دانشجوی دوره هستید
                       </span>
                     ) : (
-                      <span className="course-info__register-title">
+                      <span className="course-info__register-title"
+                        onClick={() => registerInCourse(courseDetails)}
+
+                      >
                         ثبت نام در دوره
                       </span>
                     )}
@@ -443,65 +638,38 @@ export default function CourseInfo() {
                   <span class="course-info__topic-title">سرفصل های دوره</span>
                   <span class="course-info__topic-text">
                     برای مشاهده و یا دانلود دوره روی کلمه
-                    <a href="#" style={{color: 'blue', fontWeight: 'bold'}}>
+                    <a href="#" style={{ color: 'blue', fontWeight: 'bold' }}>
                       لینک
                     </a>
                     کلیک کنید
                   </span>
                 </div>
-                <div class="course-info">
-                  <span class="course-info__courses-title">دوره های مرتبط</span>
-                  <ul class="course-info__courses-list">
-                    <li class="course-info__courses-list-item">
-                      <a href="#" class="course-info__courses-link">
-                        <img
-                          src="/images/courses/js_project.png"
-                          alt="Course Cover"
-                          class="course-info__courses-img"
-                        />
-                        <span class="course-info__courses-text">
-                          پروژه های تخصصی با جاوا اسکریپت
-                        </span>
-                      </a>
-                    </li>
-                    <li class="course-info__courses-list-item">
-                      <a href="#" class="course-info__courses-link">
-                        <img
-                          src="/images/courses/fareelancer.png"
-                          alt="Course Cover"
-                          class="course-info__courses-img"
-                        />
-                        <span class="course-info__courses-text">
-                          تعیین قیمت پروژه های فریلنسری
-                        </span>
-                      </a>
-                    </li>
-                    <li class="course-info__courses-list-item">
-                      <a href="#" class="course-info__courses-link">
-                        <img
-                          src="/images/courses/nodejs.png"
-                          alt="Course Cover"
-                          class="course-info__courses-img"
-                        />
-                        <span class="course-info__courses-text">
-                          دوره Api نویسی
-                        </span>
-                      </a>
-                    </li>
-                    <li class="course-info__courses-list-item">
-                      <a href="#" class="course-info__courses-link">
-                        <img
-                          src="/images/courses/jango.png"
-                          alt="Course Cover"
-                          class="course-info__courses-img"
-                        />
-                        <span class="course-info__courses-text">
-                          متخصص جنگو
-                        </span>
-                      </a>
-                    </li>
-                  </ul>
-                </div>
+                {relatedCourses.length !== 0 && (
+                  <div className="course-info">
+                    <span className="course-info__courses-title">
+                      دوره های مرتبط
+                    </span>
+                    <ul className="course-info__courses-list">
+                      {relatedCourses.map((course) => (
+                        <li className="course-info__courses-list-item">
+                          <Link
+                            to={`/course-info/${course.shortName}`}
+                            className="course-info__courses-link"
+                          >
+                            <img
+                              src={`http://localhost:4000/courses/covers/${course.cover}`}
+                              alt="Course Cover"
+                              className="course-info__courses-img"
+                            />
+                            <span className="course-info__courses-text">
+                              {course.name}
+                            </span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             </div>
           </div>
